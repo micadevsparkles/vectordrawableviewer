@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Drawable Live Renderer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .preview-area {
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #0f172a;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto h-full flex flex-col gap-6">
+        <header class="text-center mb-2">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                Android Vector Drawable Renderer
+            </h1>
+            <p class="text-slate-400 mt-2">Cole seu XML Android e veja a renderização instantânea</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
+            <!-- Editor Section -->
+            <div class="flex flex-col gap-3">
+                <label class="text-sm font-semibold text-slate-300 flex justify-between items-center">
+                    <span>Input XML (Drawable)</span>
+                    <button onclick="clearEditor()" class="text-xs text-red-400 hover:text-red-300 transition">Limpar</button>
+                </label>
+                <div class="glass-panel rounded-xl overflow-hidden flex-grow flex flex-col">
+                    <textarea 
+                        id="xmlInput" 
+                        class="w-full flex-grow p-4 bg-transparent outline-none font-mono text-sm resize-none custom-scrollbar text-emerald-100"
+                        placeholder="<vector xmlns:android='http://schemas.android.com/apk/res/android' ... >&#10;  <path android:pathData='...' />&#10;</vector>"
+                        spellcheck="false"
+                    ></textarea>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="flex flex-col gap-3">
+                <label class="text-sm font-semibold text-slate-300">Preview em Tempo Real</label>
+                <div class="glass-panel rounded-xl overflow-hidden flex-grow flex flex-col items-center justify-center relative min-h-[400px]">
+                    <div id="renderTarget" class="preview-area w-full h-full flex items-center justify-center p-8 overflow-auto">
+                        <div class="text-slate-500 text-center italic">
+                            Aguardando código XML válido...
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Overlay -->
+                    <div id="stats" class="absolute bottom-4 left-4 right-4 flex gap-4 text-[10px] text-slate-400">
+                        <span id="statSize">Tamanho: -</span>
+                        <span id="statPaths">Caminhos: -</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center text-slate-500 text-xs mt-4">
+            Transforma atributos `android:pathData` e `android:fillColor` em elementos SVG padrão.
+        </footer>
+    </div>
+
+    <script>
+        const xmlInput = document.getElementById('xmlInput');
+        const renderTarget = document.getElementById('renderTarget');
+        const statSize = document.getElementById('statSize');
+        const statPaths = document.getElementById('statPaths');
+
+        function parseVectorDrawable(xmlText) {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                
+                // Verificar erro de parsing
+                if (xmlDoc.getElementsByTagName("parsererror").length > 0) return null;
+
+                const vectorNode = xmlDoc.getElementsByTagName("vector")[0];
+                if (!vectorNode) return null;
+
+                // Extrair dimensões do viewport
+                const vWidth = vectorNode.getAttribute("android:viewportWidth") || "100";
+                const vHeight = vectorNode.getAttribute("android:viewportHeight") || "100";
+                
+                // Criar o elemento SVG
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svgElement = document.createElementNS(svgNS, "svg");
+                svgElement.setAttribute("viewBox", `0 0 ${vWidth} ${vHeight}`);
+                svgElement.setAttribute("width", "100%");
+                svgElement.setAttribute("height", "100%");
+                svgElement.style.maxWidth = "500px";
+
+                const paths = xmlDoc.getElementsByTagName("path");
+                statPaths.textContent = `Caminhos: ${paths.length}`;
+                statSize.textContent = `Viewport: ${vWidth}x${vHeight}`;
+
+                for (let path of paths) {
+                    const svgPath = document.createElementNS(svgNS, "path");
+                    
+                    // Mapeamento de atributos Android para SVG
+                    const d = path.getAttribute("android:pathData");
+                    const fill = path.getAttribute("android:fillColor") || "none";
+                    const stroke = path.getAttribute("android:strokeColor") || "none";
+                    const strokeWidth = path.getAttribute("android:strokeWidth") || "0";
+                    const alpha = path.getAttribute("android:alpha") || "1";
+                    const fillAlpha = path.getAttribute("android:fillAlpha") || "1";
+                    const strokeAlpha = path.getAttribute("android:strokeAlpha") || "1";
+                    const strokeLineCap = path.getAttribute("android:strokeLineCap") || "butt";
+                    const strokeLineJoin = path.getAttribute("android:strokeLineJoin") || "miter";
+
+                    if (d) {
+                        svgPath.setAttribute("d", d);
+                        svgPath.setAttribute("fill", fill);
+                        svgPath.setAttribute("stroke", stroke);
+                        svgPath.setAttribute("stroke-width", strokeWidth);
+                        svgPath.setAttribute("fill-opacity", fillAlpha);
+                        svgPath.setAttribute("stroke-opacity", strokeAlpha);
+                        svgPath.setAttribute("opacity", alpha);
+                        svgPath.setAttribute("stroke-linecap", strokeLineCap);
+                        svgPath.setAttribute("stroke-linejoin", strokeLineJoin);
+                        
+                        svgElement.appendChild(svgPath);
+                    }
+                }
+
+                return svgElement;
+            } catch (e) {
+                console.error(e);
+                return null;
+            }
+        }
+
+        function updatePreview() {
+            const xml = xmlInput.value.trim();
+            if (!xml) {
+                renderTarget.innerHTML = '<div class="text-slate-500 text-center italic">Aguardando código XML válido...</div>';
+                statPaths.textContent = "Caminhos: -";
+                statSize.textContent = "Tamanho: -";
+                return;
+            }
+
+            const svg = parseVectorDrawable(xml);
+            if (svg) {
+                renderTarget.innerHTML = '';
+                renderTarget.appendChild(svg);
+            } else {
+                renderTarget.innerHTML = '<div class="text-red-400 text-center p-4 border border-red-900/50 bg-red-900/10 rounded">Erro ao processar XML.<br><small class="opacity-50">Certifique-se que o código é um &lt;vector&gt; válido.</small></div>';
+            }
+        }
+
+        function clearEditor() {
+            xmlInput.value = '';
+            updatePreview();
+            xmlInput.focus();
+        }
+
+        // Eventos
+        xmlInput.addEventListener('input', updatePreview);
+
+        // Exemplo inicial (opcional - você pode remover se quiser começar vazio)
+        window.onload = () => {
+            // Se quiser carregar algo de teste:
+            // xmlInput.value = `...`; 
+            // updatePreview();
+        };
+    </script>
+</body>
+</html>
