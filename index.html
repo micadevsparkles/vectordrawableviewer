@@ -3,28 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vector Drawable Live Renderer</title>
+    <title>DevStudio Multiplataforma</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             background-color: #0f172a;
             color: #f8fafc;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         .glass-panel {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1e293b;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 4px;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        
         .preview-area {
             background-image: 
                 linear-gradient(45deg, #1e293b 25%, transparent 25%), 
@@ -35,81 +33,199 @@
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
             background-color: #0f172a;
         }
+
+        .tab-content { display: none; height: 100%; }
+        .tab-content.active { display: flex; flex-direction: column; }
+
+        /* Simulação do celular Android */
+        .android-device {
+            width: 320px;
+            height: 600px;
+            background: #ffffff;
+            border-radius: 30px;
+            border: 12px solid #1e293b;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            position: relative;
+            color: #000;
+        }
+        .android-screen {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            position: relative;
+        }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8">
+<body class="p-4 md:p-6">
 
-    <div class="max-w-6xl mx-auto h-full flex flex-col gap-6">
-        <header class="text-center mb-2">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-                Android Vector Drawable Renderer
-            </h1>
-            <p class="text-slate-400 mt-2">Cole seu XML Android e veja a renderização instantânea</p>
-        </header>
+    <!-- Navegação / Menu -->
+    <header class="flex justify-between items-center mb-6 max-w-7xl mx-auto w-full">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            DevStudio Online
+        </h1>
+        <nav class="flex gap-2 bg-slate-800 p-1 rounded-lg">
+            <button onclick="switchTab('tab-vector')" id="btn-tab-vector" class="px-4 py-2 text-sm rounded-md transition-colors bg-emerald-600 text-white shadow">Vector XML</button>
+            <button onclick="switchTab('tab-android')" id="btn-tab-android" class="px-4 py-2 text-sm rounded-md transition-colors text-slate-300 hover:bg-slate-700">Android UI</button>
+            <button onclick="switchTab('tab-web')" id="btn-tab-web" class="px-4 py-2 text-sm rounded-md transition-colors text-slate-300 hover:bg-slate-700">GitHub Clone</button>
+        </nav>
+    </header>
 
-        <main class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
-            <!-- Editor Section -->
-            <div class="flex flex-col gap-3">
-                <label class="text-sm font-semibold text-slate-300 flex justify-between items-center">
-                    <span>Input XML (Drawable)</span>
-                    <button onclick="clearEditor()" class="text-xs text-red-400 hover:text-red-300 transition">Limpar</button>
-                </label>
-                <div class="glass-panel rounded-xl overflow-hidden flex-grow flex flex-col">
-                    <textarea 
-                        id="xmlInput" 
-                        class="w-full flex-grow p-4 bg-transparent outline-none font-mono text-sm resize-none custom-scrollbar text-emerald-100"
-                        placeholder="<vector xmlns:android='http://schemas.android.com/apk/res/android' ... >&#10;  <path android:pathData='...' />&#10;</vector>"
-                        spellcheck="false"
-                    ></textarea>
+    <main class="flex-grow max-w-7xl mx-auto w-full relative">
+
+        <!-- ============================== -->
+        <!-- MODO 1: VECTOR DRAWABLE        -->
+        <!-- ============================== -->
+        <div id="tab-vector" class="tab-content active gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow h-full min-h-0">
+                <!-- Editor -->
+                <div class="flex flex-col gap-3 min-h-0">
+                    <label class="text-sm font-semibold text-slate-300 flex justify-between items-center">
+                        <span>Input XML (Vector Drawable)</span>
+                        <button onclick="clearVectorEditor()" class="text-xs text-red-400 hover:text-red-300">Limpar</button>
+                    </label>
+                    <div class="glass-panel rounded-xl flex-grow flex flex-col min-h-0">
+                        <textarea id="vectorInput" class="w-full flex-grow p-4 bg-transparent outline-none font-mono text-sm resize-none custom-scrollbar text-emerald-100" spellcheck="false" placeholder="<vector xmlns:android='...'>...</vector>"></textarea>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Preview Section -->
-            <div class="flex flex-col gap-3">
-                <label class="text-sm font-semibold text-slate-300">Preview em Tempo Real</label>
-                <div class="glass-panel rounded-xl overflow-hidden flex-grow flex flex-col items-center justify-center relative min-h-[400px]">
-                    <div id="renderTarget" class="preview-area w-full h-full flex items-center justify-center p-8 overflow-auto">
-                        <div class="text-slate-500 text-center italic">
-                            Aguardando código XML válido...
+                <!-- Preview -->
+                <div class="flex flex-col gap-3 min-h-0">
+                    <label class="text-sm font-semibold text-slate-300">Preview em Tempo Real</label>
+                    <div class="glass-panel rounded-xl flex-grow flex flex-col items-center justify-center relative preview-area min-h-0">
+                        <div id="vectorPreview" class="w-full h-full flex items-center justify-center p-8 overflow-auto">
+                            <div class="text-slate-500 italic">Aguardando código...</div>
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4 flex gap-4 text-[10px] text-slate-400">
+                            <span id="vectorSize">Tamanho: -</span>
+                            <span id="vectorPaths">Caminhos: -</span>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ============================== -->
+        <!-- MODO 2: ANDROID LAYOUT         -->
+        <!-- ============================== -->
+        <div id="tab-android" class="tab-content gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 flex-grow h-full min-h-0">
+                <!-- Editor Duplo (Kotlin e XML) -->
+                <div class="flex flex-col gap-4 min-h-0">
                     
-                    <!-- Stats Overlay -->
-                    <div id="stats" class="absolute bottom-4 left-4 right-4 flex gap-4 text-[10px] text-slate-400">
-                        <span id="statSize">Tamanho: -</span>
-                        <span id="statPaths">Caminhos: -</span>
+                    <!-- Campo Kotlin -->
+                    <div class="flex flex-col gap-2 h-1/2">
+                        <label class="text-sm font-semibold text-blue-300">Activity (Kotlin)</label>
+                        <div class="glass-panel rounded-xl flex-grow flex flex-col min-h-0 border-blue-900/50">
+                            <textarea id="androidKotlin" class="w-full flex-grow p-4 bg-transparent outline-none font-mono text-sm resize-none custom-scrollbar text-blue-100" spellcheck="false" placeholder="class MainActivity : AppCompatActivity() { ... }"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Campo XML -->
+                    <div class="flex flex-col gap-2 h-1/2">
+                        <label class="text-sm font-semibold text-orange-300">Layout (XML)</label>
+                        <div class="glass-panel rounded-xl flex-grow flex flex-col min-h-0 border-orange-900/50">
+                            <textarea id="androidXml" class="w-full flex-grow p-4 bg-transparent outline-none font-mono text-sm resize-none custom-scrollbar text-orange-100" spellcheck="false" placeholder="<LinearLayout ...>"></textarea>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <!-- Preview Simulação -->
+                <div class="flex flex-col gap-3 min-h-0 items-center">
+                    <label class="text-sm font-semibold text-slate-300 w-full text-center">Simulador de Tela</label>
+                    <div class="glass-panel rounded-xl w-full flex-grow flex items-center justify-center preview-area relative min-h-0">
+                        <div class="android-device">
+                            <div id="androidPreview" class="android-screen bg-slate-100">
+                                <!-- Elementos Android renderizados aqui -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
 
-        <footer class="text-center text-slate-500 text-xs mt-4">
-            Transforma atributos `android:pathData` e `android:fillColor` em elementos SVG padrão.
-        </footer>
-    </div>
+
+        <!-- ============================== -->
+        <!-- MODO 3: GITHUB CLONER          -->
+        <!-- ============================== -->
+        <div id="tab-web" class="tab-content gap-6">
+            <!-- Barra de URL -->
+            <div class="flex gap-2">
+                <input type="text" id="webUrl" class="flex-grow glass-panel rounded-lg px-4 py-2 outline-none text-white focus:border-purple-500" placeholder="https://github.com/usuario/repositorio">
+                <button onclick="fetchGitHubRepo()" class="px-6 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition-colors">Clonar Repo</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-[250px_1fr_1fr] gap-6 flex-grow h-full min-h-0">
+                <!-- Sidebar (Arquivos) -->
+                <div class="flex flex-col gap-3 min-h-0">
+                    <label class="text-sm font-semibold text-purple-300">Arquivos do Repositório</label>
+                    <div class="glass-panel rounded-xl flex-grow p-2 flex flex-col gap-1 overflow-y-auto custom-scrollbar" id="webSidebar">
+                        <div class="text-slate-500 text-xs text-center p-4">Cole o link de um repositório GitHub para baixar os arquivos.</div>
+                    </div>
+                </div>
+
+                <!-- Editor Web -->
+                <div class="flex flex-col gap-3 min-h-0">
+                    <label class="text-sm font-semibold text-purple-300 flex justify-between">
+                        <span id="currentWebFileLabel">Nenhum arquivo</span>
+                    </label>
+                    <div class="glass-panel rounded-xl flex-grow flex flex-col min-h-0 border-purple-900/50">
+                        <textarea id="webEditor" oninput="onWebEditorChange()" class="w-full flex-grow p-4 bg-transparent outline-none font-mono text-sm resize-none custom-scrollbar text-purple-100" spellcheck="false" placeholder="Código fonte..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Preview Web -->
+                <div class="flex flex-col gap-3 min-h-0">
+                    <label class="text-sm font-semibold text-slate-300">Live Preview</label>
+                    <div class="glass-panel rounded-xl flex-grow bg-white overflow-hidden min-h-0">
+                        <iframe id="webIframe" class="w-full h-full border-none bg-white"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
 
     <script>
-        const xmlInput = document.getElementById('xmlInput');
-        const renderTarget = document.getElementById('renderTarget');
-        const statSize = document.getElementById('statSize');
-        const statPaths = document.getElementById('statPaths');
+        // ==========================================
+        // GESTÃO DE ABAS
+        // ==========================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            const btns = ['btn-tab-vector', 'btn-tab-android', 'btn-tab-web'];
+            btns.forEach(id => {
+                const btn = document.getElementById(id);
+                btn.className = "px-4 py-2 text-sm rounded-md transition-colors text-slate-300 hover:bg-slate-700";
+            });
+
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if(tabId === 'tab-vector') activeBtn.className = "px-4 py-2 text-sm rounded-md transition-colors bg-emerald-600 text-white shadow";
+            if(tabId === 'tab-android') activeBtn.className = "px-4 py-2 text-sm rounded-md transition-colors bg-blue-600 text-white shadow";
+            if(tabId === 'tab-web') activeBtn.className = "px-4 py-2 text-sm rounded-md transition-colors bg-purple-600 text-white shadow";
+        }
+
+        // ==========================================
+        // LOGICA 1: VECTOR DRAWABLE
+        // ==========================================
+        const vectorInput = document.getElementById('vectorInput');
+        const vectorPreview = document.getElementById('vectorPreview');
+        const vectorSize = document.getElementById('vectorSize');
+        const vectorPaths = document.getElementById('vectorPaths');
 
         function parseVectorDrawable(xmlText) {
             try {
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                
-                // Verificar erro de parsing
                 if (xmlDoc.getElementsByTagName("parsererror").length > 0) return null;
-
                 const vectorNode = xmlDoc.getElementsByTagName("vector")[0];
                 if (!vectorNode) return null;
 
-                // Extrair dimensões do viewport
                 const vWidth = vectorNode.getAttribute("android:viewportWidth") || "100";
                 const vHeight = vectorNode.getAttribute("android:viewportHeight") || "100";
                 
-                // Criar o elemento SVG
                 const svgNS = "http://www.w3.org/2000/svg";
                 const svgElement = document.createElementNS(svgNS, "svg");
                 svgElement.setAttribute("viewBox", `0 0 ${vWidth} ${vHeight}`);
@@ -118,78 +234,361 @@
                 svgElement.style.maxWidth = "500px";
 
                 const paths = xmlDoc.getElementsByTagName("path");
-                statPaths.textContent = `Caminhos: ${paths.length}`;
-                statSize.textContent = `Viewport: ${vWidth}x${vHeight}`;
+                vectorPaths.textContent = `Caminhos: ${paths.length}`;
+                vectorSize.textContent = `Viewport: ${vWidth}x${vHeight}`;
 
                 for (let path of paths) {
                     const svgPath = document.createElementNS(svgNS, "path");
-                    
-                    // Mapeamento de atributos Android para SVG
                     const d = path.getAttribute("android:pathData");
-                    const fill = path.getAttribute("android:fillColor") || "none";
-                    const stroke = path.getAttribute("android:strokeColor") || "none";
-                    const strokeWidth = path.getAttribute("android:strokeWidth") || "0";
-                    const alpha = path.getAttribute("android:alpha") || "1";
-                    const fillAlpha = path.getAttribute("android:fillAlpha") || "1";
-                    const strokeAlpha = path.getAttribute("android:strokeAlpha") || "1";
-                    const strokeLineCap = path.getAttribute("android:strokeLineCap") || "butt";
-                    const strokeLineJoin = path.getAttribute("android:strokeLineJoin") || "miter";
-
                     if (d) {
                         svgPath.setAttribute("d", d);
-                        svgPath.setAttribute("fill", fill);
-                        svgPath.setAttribute("stroke", stroke);
-                        svgPath.setAttribute("stroke-width", strokeWidth);
-                        svgPath.setAttribute("fill-opacity", fillAlpha);
-                        svgPath.setAttribute("stroke-opacity", strokeAlpha);
-                        svgPath.setAttribute("opacity", alpha);
-                        svgPath.setAttribute("stroke-linecap", strokeLineCap);
-                        svgPath.setAttribute("stroke-linejoin", strokeLineJoin);
-                        
+                        svgPath.setAttribute("fill", path.getAttribute("android:fillColor") || "none");
+                        svgPath.setAttribute("stroke", path.getAttribute("android:strokeColor") || "none");
+                        svgPath.setAttribute("stroke-width", path.getAttribute("android:strokeWidth") || "0");
+                        svgPath.setAttribute("opacity", path.getAttribute("android:alpha") || "1");
                         svgElement.appendChild(svgPath);
                     }
                 }
-
                 return svgElement;
-            } catch (e) {
-                console.error(e);
-                return null;
+            } catch (e) { return null; }
+        }
+
+        function updateVector() {
+            const xml = vectorInput.value.trim();
+            if (!xml) {
+                vectorPreview.innerHTML = '<div class="text-slate-500 italic">Aguardando código...</div>';
+                return;
+            }
+            const svg = parseVectorDrawable(xml);
+            if (svg) {
+                vectorPreview.innerHTML = '';
+                vectorPreview.appendChild(svg);
+            } else {
+                vectorPreview.innerHTML = '<div class="text-red-400">Erro ao processar XML.</div>';
             }
         }
 
-        function updatePreview() {
-            const xml = xmlInput.value.trim();
+        function clearVectorEditor() {
+            vectorInput.value = '';
+            updateVector();
+        }
+        vectorInput.addEventListener('input', updateVector);
+
+
+        // ==========================================
+        // LOGICA 2: ANDROID LAYOUT (XML Parser Simples)
+        // ==========================================
+        const androidXml = document.getElementById('androidXml');
+        const androidPreview = document.getElementById('androidPreview');
+
+        function hexToRgbA(hex){
+            if(!hex || !hex.startsWith('#')) return hex;
+            let c;
+            if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+                c= hex.substring(1).split('');
+                if(c.length== 3){
+                    c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+                }
+                c= '0x'+c.join('');
+                return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+',1)';
+            }
+            // Suporte para #AARRGGBB
+            if(/^#([A-Fa-f0-9]{8})$/.test(hex)){
+                c = hex.substring(1);
+                let a = parseInt(c.substring(0,2), 16) / 255;
+                let r = parseInt(c.substring(2,4), 16);
+                let g = parseInt(c.substring(4,6), 16);
+                let b = parseInt(c.substring(6,8), 16);
+                return `rgba(${r},${g},${b},${a})`;
+            }
+            return hex;
+        }
+
+        function buildAndroidHtml(node) {
+            if (node.nodeType !== 1) return "";
+            
+            const tag = node.tagName;
+            let style = "box-sizing: border-box; position: relative; ";
+            let textContent = "";
+
+            // Atributos básicos
+            const w = node.getAttribute('android:layout_width');
+            const h = node.getAttribute('android:layout_height');
+            const bg = node.getAttribute('android:background');
+            const weight = node.getAttribute('android:layout_weight');
+            const padding = node.getAttribute('android:padding');
+            const margin = node.getAttribute('android:layout_margin');
+            
+            if (w === 'match_parent') style += "width: 100%; ";
+            else if (w === 'wrap_content') style += "width: auto; max-width: 100%; ";
+            else if (w) style += `width: ${w.replace('dp','')}px; `;
+
+            if (h === 'match_parent') style += "height: 100%; ";
+            else if (h === 'wrap_content') style += "height: auto; ";
+            else if (h) style += `height: ${h.replace('dp','')}px; `;
+
+            if (bg) style += `background-color: ${hexToRgbA(bg)}; `;
+            if (weight) style += `flex: ${weight}; `;
+            if (padding) style += `padding: ${padding.replace('dp','')}px; `;
+            if (margin) style += `margin: ${margin.replace('dp','')}px; `;
+
+            // Parse recursivo dos filhos
+            let childrenHtml = "";
+            Array.from(node.children).forEach(child => {
+                childrenHtml += buildAndroidHtml(child);
+            });
+
+            // Lógica Específica por Tag
+            if (tag === 'LinearLayout') {
+                const orientation = node.getAttribute('android:orientation') || 'horizontal';
+                const gravity = node.getAttribute('android:gravity');
+                
+                style += "display: flex; ";
+                style += orientation === 'vertical' ? "flex-direction: column; " : "flex-direction: row; ";
+                
+                if (gravity) {
+                    if(gravity.includes('center')) { style += "justify-content: center; align-items: center; "; }
+                    if(gravity.includes('bottom')) { style += "justify-content: flex-end; "; }
+                }
+                return `<div style="${style}">${childrenHtml}</div>`;
+            } 
+            else if (tag === 'TextView' || tag === 'Button') {
+                let text = node.getAttribute('android:text') || '';
+                if(text.startsWith('@string/')) text = text.replace('@string/', ''); // fallback simples
+                
+                const textColor = node.getAttribute('android:textColor');
+                const textSize = node.getAttribute('android:textSize');
+                const textStyle = node.getAttribute('android:textStyle');
+                
+                if (textColor) style += `color: ${hexToRgbA(textColor)}; `;
+                if (textSize) style += `font-size: ${textSize.replace('sp','').replace('dp','')}px; `;
+                if (textStyle === 'bold') style += `font-weight: bold; `;
+                
+                if(tag === 'Button') {
+                    style += "padding: 10px 16px; border-radius: 4px; border: none; text-transform: uppercase; background-color: #6200EE; color: white; cursor: pointer; text-align: center; font-weight: 500; shadow-sm; display: flex; align-items: center; justify-content: center;";
+                    if(bg) style += `background-color: ${hexToRgbA(bg)}; `;
+                    return `<button style="${style}">${text}${childrenHtml}</button>`;
+                }
+                return `<div style="${style}">${text}${childrenHtml}</div>`;
+            }
+            else if (tag === 'ImageView') {
+                style += "background-color: #ccc; display: flex; align-items: center; justify-content: center; overflow: hidden; ";
+                return `<div style="${style}"><span style="color:#666; font-size:10px">ImageView</span></div>`;
+            }
+            
+            // Fallback Genérico
+            return `<div style="${style}">${childrenHtml}</div>`;
+        }
+
+        function updateAndroid() {
+            const xml = androidXml.value.trim();
             if (!xml) {
-                renderTarget.innerHTML = '<div class="text-slate-500 text-center italic">Aguardando código XML válido...</div>';
-                statPaths.textContent = "Caminhos: -";
-                statSize.textContent = "Tamanho: -";
+                androidPreview.innerHTML = '';
+                return;
+            }
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xml, "text/xml");
+                if (doc.getElementsByTagName("parsererror").length > 0) {
+                    androidPreview.innerHTML = '<div style="color:red; padding:20px;">Erro de Sintaxe XML</div>';
+                    return;
+                }
+                androidPreview.innerHTML = buildAndroidHtml(doc.documentElement);
+            } catch (e) {
+                console.error("Erro no parser android", e);
+            }
+        }
+
+        androidXml.addEventListener('input', updateAndroid);
+
+        // Pre-carregar um layout Android de exemplo
+        androidXml.value = `<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#f5f5f5"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bem-vindo ao App"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:layout_margin="16dp" />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="Entrar"
+        android:background="#007AFF" />
+
+</LinearLayout>`;
+        updateAndroid();
+
+
+        // ==========================================
+        // LOGICA 3: GITHUB CLONER
+        // ==========================================
+        let virtualFiles = {};
+        let currentWebFile = '';
+        let lastViewedHtml = null;
+
+        async function fetchGitHubRepo() {
+            const urlInput = document.getElementById('webUrl').value.trim();
+            if(!urlInput) return alert("Digite a URL do repositório (ex: https://github.com/usuario/repositorio)");
+
+            let owner, repo;
+            try {
+                // Limpa a URL para extrair Owner e Repo
+                let cleanUrl = urlInput.replace(/https?:\/\/(www\.)?github\.com\//, '');
+                cleanUrl = cleanUrl.replace(/\/$/, ''); // Remove trailing slash
+                const parts = cleanUrl.split('/');
+                owner = parts[0];
+                repo = parts[1];
+                if(!owner || !repo) throw new Error();
+            } catch(e) {
+                return alert("URL inválida. Use o formato: https://github.com/usuario/repositorio");
+            }
+
+            const sidebar = document.getElementById('webSidebar');
+            sidebar.innerHTML = `<div class="text-slate-400 p-4 text-center">Analisando árvore do repositório...<br><small>${owner}/${repo}</small></div>`;
+
+            try {
+                // Pega a branch principal
+                const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+                if(!repoRes.ok) throw new Error("Repositório não encontrado. Verifique a URL e se é público.");
+                const repoData = await repoRes.json();
+                const branch = repoData.default_branch;
+
+                // Busca a árvore completa de arquivos recursivamente
+                const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+                const treeData = await treeRes.json();
+
+                // Filtra apenas HTML, CSS e JS. Limitamos a 40 para não sobrecarregar a interface
+                const files = treeData.tree.filter(f => f.type === 'blob' && /\.(html|css|js)$/i.test(f.path)).slice(0, 40);
+
+                if(files.length === 0) {
+                     sidebar.innerHTML = `<div class="text-yellow-400 p-4 text-center">Nenhum arquivo web (.html, .css, .js) foi encontrado.</div>`;
+                     return;
+                }
+
+                sidebar.innerHTML = `<div class="text-slate-400 p-4 text-center flex flex-col items-center gap-2">
+                    <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    Baixando ${files.length} arquivos...
+                </div>`;
+
+                virtualFiles = {};
+                currentWebFile = '';
+                lastViewedHtml = null;
+
+                // Baixa o conteúdo de todos os arquivos web detectados
+                await Promise.all(files.map(async (file) => {
+                    try {
+                        const contentRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`);
+                        if(contentRes.ok) {
+                            virtualFiles[file.path] = await contentRes.text();
+                        }
+                    } catch(e) {
+                        console.error("Erro ao baixar", file.path);
+                    }
+                }));
+
+                renderWebSidebar();
+
+                // Procura por um index.html, senão pega o primeiro HTML disponível
+                const indexFile = Object.keys(virtualFiles).find(p => p.toLowerCase().endsWith('index.html')) || 
+                                  Object.keys(virtualFiles).find(p => p.toLowerCase().endsWith('.html')) || 
+                                  Object.keys(virtualFiles)[0];
+                
+                if(indexFile) selectWebFile(indexFile);
+
+            } catch(e) {
+                sidebar.innerHTML = `<div class="text-red-400 p-4 text-center">Erro: ${e.message}</div>`;
+            }
+        }
+
+        function renderWebSidebar() {
+            const sidebar = document.getElementById('webSidebar');
+            sidebar.innerHTML = '';
+            
+            Object.keys(virtualFiles).forEach(fileName => {
+                let colorClass = "text-slate-300";
+                if(fileName.endsWith('.css')) colorClass = "text-sky-300";
+                if(fileName.endsWith('.js')) colorClass = "text-yellow-300";
+
+                const btn = document.createElement('button');
+                // Pega apenas o nome do arquivo ignorando pastas muito longas (para exibição amigavel)
+                const displayName = fileName.split('/').pop(); 
+                
+                btn.className = `w-full text-left px-3 py-2 text-sm rounded-md hover:bg-purple-900/50 transition-colors truncate ${colorClass}`;
+                btn.title = fileName; // tooltip com path completo
+                btn.innerText = '📄 ' + displayName;
+                btn.onclick = () => selectWebFile(fileName);
+                sidebar.appendChild(btn);
+            });
+        }
+
+        function selectWebFile(fileName) {
+            currentWebFile = fileName;
+            if(fileName.toLowerCase().endsWith('.html')) {
+                lastViewedHtml = fileName;
+            }
+            
+            document.getElementById('currentWebFileLabel').innerText = fileName;
+            document.getElementById('webEditor').value = virtualFiles[fileName];
+            updateWebPreview();
+        }
+
+        function onWebEditorChange() {
+            if(!currentWebFile) return;
+            virtualFiles[currentWebFile] = document.getElementById('webEditor').value;
+            updateWebPreview();
+        }
+
+        function updateWebPreview() {
+            // Pega o HTML atual da tela. Se o usuario clicar em um css/js, continua injetando no último html aberto
+            let htmlFileToPreview = lastViewedHtml || Object.keys(virtualFiles).find(p => p.toLowerCase().endsWith('index.html')) || Object.keys(virtualFiles).find(p => p.toLowerCase().endsWith('.html'));
+
+            if (!htmlFileToPreview || !virtualFiles[htmlFileToPreview]) {
+                document.getElementById('webIframe').srcdoc = "<html><body style='font-family:sans-serif;text-align:center;padding:2rem;'>Abra um arquivo HTML para visualizar.</body></html>";
                 return;
             }
 
-            const svg = parseVectorDrawable(xml);
-            if (svg) {
-                renderTarget.innerHTML = '';
-                renderTarget.appendChild(svg);
+            let finalHtml = virtualFiles[htmlFileToPreview];
+            
+            // Re-injetar TODOS os arquivos CSS e JS da memoria virtual para o Iframe renderizar corretamente
+            let injectedHead = '';
+            let injectedBody = '';
+
+            Object.keys(virtualFiles).forEach(file => {
+                if(file.endsWith('.css')) {
+                    injectedHead += `<style>\n/* Arquivo: ${file} */\n${virtualFiles[file]}\n</style>\n`;
+                }
+                if(file.endsWith('.js')) {
+                    injectedBody += `<script>\n/* Arquivo: ${file} */\n${virtualFiles[file]}\n<\/script>\n`;
+                }
+            });
+
+            // Injetar antes do fechamento das tags de estrutura base
+            if(finalHtml.includes('</head>')) {
+                finalHtml = finalHtml.replace('</head>', injectedHead + '</head>');
             } else {
-                renderTarget.innerHTML = '<div class="text-red-400 text-center p-4 border border-red-900/50 bg-red-900/10 rounded">Erro ao processar XML.<br><small class="opacity-50">Certifique-se que o código é um &lt;vector&gt; válido.</small></div>';
+                finalHtml = injectedHead + finalHtml;
             }
+
+            if(finalHtml.includes('</body>')) {
+                finalHtml = finalHtml.replace('</body>', injectedBody + '</body>');
+            } else {
+                finalHtml += injectedBody;
+            }
+
+            document.getElementById('webIframe').srcdoc = finalHtml;
         }
 
-        function clearEditor() {
-            xmlInput.value = '';
-            updatePreview();
-            xmlInput.focus();
-        }
-
-        // Eventos
-        xmlInput.addEventListener('input', updatePreview);
-
-        // Exemplo inicial (opcional - você pode remover se quiser começar vazio)
-        window.onload = () => {
-            // Se quiser carregar algo de teste:
-            // xmlInput.value = `...`; 
-            // updatePreview();
-        };
     </script>
 </body>
 </html>
